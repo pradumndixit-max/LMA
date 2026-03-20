@@ -294,13 +294,25 @@ tbody tr:hover{background:var(--sf2)}
 <div class="sb">
 <div class="sb-logo">
   <div class="sfx-logo">
-    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Main arrow body: right-pointing, yellow-green -->
-      <!-- Shape: starts top-left, goes to point on right, comes back, with notch cut at bottom-right -->
-      <polygon points="0,0 60,0 100,50 60,100 0,100 0,70 50,50 0,30" fill="#C8D400"/>
-      <!-- Dark triangular notch cut into bottom-right of arrow -->
-      <polygon points="58,62 100,100 68,100" fill="#2d5c58"/>
-    </svg>
+    <svg width="38" height="34" viewBox="0 0 110 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shadowfax fox/cursor mark — yellow-green on teal background circle -->
+  <rect width="110" height="100" rx="14" fill="#008B70"/>
+  <!-- The yellow-green shape:
+       Upper-left sharp spike pointing up
+       Sweeps right along top to a right-pointing arrow tip
+       Then curves back with a smooth deep valley at bottom
+       Matching the exact logo shape -->
+  <path d="
+    M 18,8
+    L 30,42
+    Q 40,70 55,58
+    Q 70,46 82,52
+    L 95,38
+    L 58,18
+    Q 48,12 35,14
+    Z
+  " fill="#C8D400"/>
+</svg>
     <div class="sfx-text">
       <span class="sfx-name">SHADOWFAX</span>
       <span class="sfx-tag">Think ahead!</span>
