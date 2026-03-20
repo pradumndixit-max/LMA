@@ -631,26 +631,227 @@ function rPay(){
 
 /* CPO ANALYTICS */
 function rCPO(){
-  const lm=S(DATA,'lm_orders'),tp=S(DATA,'Total_Payout'),avgCPO=lm>0?R2(tp/lm):0;
-  const byV={};DATA.forEach(r=>{if(!byV[r.parent_id])byV[r.parent_id]={lm:0,tp:0,riders:new Set()};byV[r.parent_id].lm+=r.lm_orders;byV[r.parent_id].tp+=r.Total_Payout;byV[r.parent_id].riders.add(r.rider_id);});
-  const vArr=Object.entries(byV).filter(([,v])=>v.lm>0).map(([vid,v])=>({vid,lm:v.lm,tp:R2(v.tp),cpo:R2(v.tp/v.lm),riders:v.riders.size})).sort((a,b)=>a.cpo-b.cpo);
-  const bestV=vArr[0],worstV=vArr[vArr.length-1];
-  const byH={};DATA.forEach(r=>{if(!byH[r.hub])byH[r.hub]={lm:0,tp:0,st:r.state,as:0};byH[r.hub].lm+=r.lm_orders;byH[r.hub].tp+=r.Total_Payout;byH[r.hub].as+=r.Total_assigned;});
-  const hArr=Object.entries(byH).filter(([,v])=>v.lm>0).map(([hub,v])=>({hub,lm:v.lm,tp:R2(v.tp),cpo:R2(v.tp/v.lm),st:v.st,dr:v.as>0?R2(v.lm/v.as*100):0})).sort((a,b)=>a.cpo-b.cpo);
+  const totalLM=S(DATA,'lm_orders'), totalTP=S(DATA,'Total_Payout');
+  const avgLMCPO = totalLM>0 ? R2(S(DATA,'LM_Payout_without_SR')/totalLM) : 0;
+
+  // ── Vendor aggregation ──────────────────────────────────────────────────
+  const byV={};
+  DATA.forEach(r=>{
+    const k=r.parent_id;
+    if(!byV[k]) byV[k]={
+      name:r.parent_name||('V:'+k.slice(-5)),
+      lm:0,club:0,sdd:0,fm:0,rts:0,
+      lm_pay:0,club_pay:0,sdd_pay:0,fm_pay:0,rts_pay:0,
+      tp:0,riders:new Set()
+    };
+    const v=byV[k];
+    v.lm+=r.lm_orders; v.club+=r.clubbed_orders; v.sdd+=r.sdd_orders;
+    v.fm+=r.fm_orders; v.rts+=r.rts_orders;
+    v.lm_pay+=r.LM_Payout_without_SR; v.club_pay+=r.Club_Payout;
+    v.sdd_pay+=r.SDD_Payout; v.fm_pay+=r.FM_Payout; v.rts_pay+=r.RTS_payout;
+    v.tp+=r.Total_Payout; v.riders.add(r.rider_id);
+  });
+  const vArr=Object.entries(byV).map(([vid,v])=>({
+    vid, name:v.name, riders:v.riders.size,
+    lm:v.lm, club:v.club, sdd:v.sdd, fm:v.fm, rts:v.rts, tp:R2(v.tp),
+    lm_cpo:  v.lm>0   ? R2(v.lm_pay/v.lm)   : null,
+    club_cpo:v.club>0  ? R2(v.club_pay/v.club) : null,
+    sdd_cpo: v.sdd>0   ? R2(v.sdd_pay/v.sdd)  : null,
+    fm_cpo:  v.fm>0    ? R2(v.fm_pay/v.fm)    : null,
+    rts_cpo: v.rts>0   ? R2(v.rts_pay/v.rts)  : null,
+  })).sort((a,b)=>b.lm-a.lm);
+
+  // ── Hub aggregation ──────────────────────────────────────────────────────
+  const byH={};
+  DATA.forEach(r=>{
+    const k=r.hub;
+    if(!byH[k]) byH[k]={
+      st:r.state, lm:0,club:0,sdd:0,fm:0,rts:0,
+      lm_pay:0,club_pay:0,sdd_pay:0,fm_pay:0,rts_pay:0,
+      tp:0, as:0
+    };
+    const h=byH[k];
+    h.lm+=r.lm_orders; h.club+=r.clubbed_orders; h.sdd+=r.sdd_orders;
+    h.fm+=r.fm_orders; h.rts+=r.rts_orders;
+    h.lm_pay+=r.LM_Payout_without_SR; h.club_pay+=r.Club_Payout;
+    h.sdd_pay+=r.SDD_Payout; h.fm_pay+=r.FM_Payout; h.rts_pay+=r.RTS_payout;
+    h.tp+=r.Total_Payout; h.as+=r.Total_assigned;
+  });
+  const hArr=Object.entries(byH).map(([hub,h])=>({
+    hub, st:h.st, lm:h.lm, tp:R2(h.tp),
+    dr:h.as>0?R2(h.lm/h.as*100):0,
+    lm_cpo:  h.lm>0   ? R2(h.lm_pay/h.lm)   : null,
+    club_cpo:h.club>0  ? R2(h.club_pay/h.club) : null,
+    sdd_cpo: h.sdd>0   ? R2(h.sdd_pay/h.sdd)  : null,
+    fm_cpo:  h.fm>0    ? R2(h.fm_pay/h.fm)    : null,
+    rts_cpo: h.rts>0   ? R2(h.rts_pay/h.rts)  : null,
+  })).sort((a,b)=>b.lm-a.lm);
+
   const anomalies=DATA.filter(r=>r.lm_orders===0&&r.Total_Payout>0);
+  const bestV=vArr.filter(v=>v.lm_cpo!==null).sort((a,b)=>a.lm_cpo-b.lm_cpo)[0];
+  const worstV=vArr.filter(v=>v.lm_cpo!==null).sort((a,b)=>b.lm_cpo-a.lm_cpo)[0];
+
+  // helper: format CPO cell
+  const fCPO=v=>v===null?'<span class="badge na">N/A</span>':
+    `<span class="num ${cpoBand(v)}">₹${v}</span>`;
+
   const el=document.getElementById('pg-cpo');
-  el.innerHTML='<div id="k-cpo"></div>'+(anomalies.length>0?'<div class="callout amber">⚠️ <div><strong>'+anomalies.length+' zero-delivery payout rows</strong> — ₹'+F(anomalies.reduce((s,r)=>s+r.Total_Payout,0))+' paid with 0 LM orders. Review below.</div></div>':'')+'<div class="cr c2"><div class="cc"><div class="ct">Vendor CPO (₹/order) <span class="ct-sub">Green &lt;₹15 | Amber ₹15-25 | Red &gt;₹25</span></div><div class="cw" id="hw-vcpo"><canvas id="c-vcpo"></canvas></div></div><div class="cc"><div class="ct">CPO vs Delivery Rate <span class="ct-sub">Ideal = high del% + low CPO (top-left)</span></div><div class="cw" style="height:260px"><canvas id="c-scatter"></canvas></div></div></div><div class="cr c1"><div class="cc"><div class="ct">Hub CPO (₹/order) <span class="ct-sub">All active hubs</span></div><div class="cw" id="hw-hcpo"><canvas id="c-hcpo"></canvas></div></div></div><div class="cr c2"><div class="cc"><div class="sti">Vendor CPO Table</div><div class="tw"><table><thead><tr><th>Rank</th><th>Vendor ID</th><th>LM Orders</th><th>Payout</th><th>CPO</th><th>Riders</th><th>vs Avg</th><th>Band</th></tr></thead><tbody id="vcpo-tb"></tbody></table></div></div><div class="cc"><div class="sti">Hub CPO Table</div><div class="tw"><table><thead><tr><th>Hub</th><th>State</th><th>LM Orders</th><th>CPO</th><th>Del Rate%</th><th>Band</th></tr></thead><tbody id="hcpo-tb"></tbody></table></div></div></div>'+(anomalies.length>0?'<div class="sti">Zero-Delivery Payout Anomalies</div><div class="cc"><div class="tw"><table><thead><tr><th>Rider</th><th>Hub</th><th>Vendor</th><th>Date</th><th>Assigned</th><th>LM Orders</th><th>Payout</th></tr></thead><tbody>'+anomalies.map(r=>'<tr><td>'+r.rider_name+'</td><td>'+r.hub+'</td><td>'+r.parent_id+'</td><td>'+r.order_date+'</td><td class="num">'+r.Total_assigned+'</td><td><span class="badge lo">0</span></td><td class="num">'+FC(r.Total_Payout)+'</td></tr>').join('')+'</tbody></table></div></div>':'');
-  mkK('k-cpo',[{l:'Total Payout',v:FC(tp),c:'bl'},{l:'Total LM Orders',v:F(lm),c:'gn'},{l:'Avg CPO',v:FC(avgCPO),s:'₹/order',c:avgCPO<15?'gn':avgCPO<=25?'am':'rd'},{l:'Lowest CPO',v:FC(bestV?.cpo||0),s:'V:'+bestV?.vid?.slice(-5),c:'gn'},{l:'Highest CPO',v:FC(worstV?.cpo||0),s:'V:'+worstV?.vid?.slice(-5),c:'rd'},{l:'Anomalies',v:anomalies.length,s:'zero orders + payout',c:anomalies.length>0?'am':'gn'}]);
-  const vS=[...vArr].sort((a,b)=>b.cpo-a.cpo);
-  document.getElementById('hw-vcpo').style.height=hH(vS.length);
-  ch('c-vcpo',{type:'bar',data:{labels:vS.map(v=>'V:'+v.vid.slice(-5)),datasets:[{data:vS.map(v=>v.cpo),backgroundColor:vS.map(v=>v.cpo<15?'#16a34a':v.cpo<=25?'#d97706':'#dc2626'),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' ₹'+c.raw+'/order'}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+v,font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
-  const scD=vArr.map(v=>{const rows=DATA.filter(r=>r.parent_id===v.vid);const dr=rows.reduce((s,r)=>({lm:s.lm+r.lm_orders,as:s.as+r.Total_assigned}),{lm:0,as:0});return{x:dr.as>0?R2(dr.lm/dr.as*100):0,y:v.cpo,vid:v.vid};});
-  ch('c-scatter',{type:'scatter',data:{datasets:[{data:scD,backgroundColor:'rgba(37,99,235,.6)',pointRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'V:'+c.raw.vid?.slice(-5)+' | CPO:₹'+c.raw.y+' | Del:'+c.raw.x+'%'}}},scales:{x:{title:{display:true,text:'Delivery Rate %',font:{size:9}},grid:{color:GC},ticks:{font:{size:9}}},y:{title:{display:true,text:'CPO (₹)',font:{size:9}},grid:{color:GC},ticks:{font:{size:9}}}}}});
-  const hS=[...hArr].sort((a,b)=>b.cpo-a.cpo).slice(0,20);
-  document.getElementById('hw-hcpo').style.height=hH(hS.length);
-  ch('c-hcpo',{type:'bar',data:{labels:hS.map(h=>h.hub),datasets:[{data:hS.map(h=>h.cpo),backgroundColor:hS.map(h=>h.cpo<15?'#16a34a':h.cpo<=25?'#d97706':'#dc2626'),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' ₹'+c.raw+'/order'}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+v,font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
-  document.getElementById('vcpo-tb').innerHTML=vArr.map((v,i)=>{const d=R2(v.cpo-avgCPO);return'<tr><td>'+(i+1)+'</td><td class="num">V:'+v.vid.slice(-5)+'</td><td class="num">'+F(v.lm)+'</td><td class="num">'+FC(v.tp)+'</td><td class="num '+cpoBand(v.cpo)+'">₹'+v.cpo+'</td><td class="num">'+v.riders+'</td><td style="color:'+(d>0?'#dc2626':'#16a34a')+';font-size:10px;font-weight:600">'+(d>0?'▲':'▼')+' ₹'+Math.abs(d).toFixed(2)+'</td><td>'+cpoBadge(v.cpo)+'</td></tr>';}).join('');
-  document.getElementById('hcpo-tb').innerHTML=hArr.map(h=>'<tr><td>'+h.hub+'</td><td>'+h.st+'</td><td class="num">'+F(h.lm)+'</td><td class="num '+cpoBand(h.cpo)+'">₹'+h.cpo+'</td><td class="num">'+h.dr+'%</td><td>'+cpoBadge(h.cpo)+'</td></tr>').join('');
+  el.innerHTML=`
+  <div id="k-cpo"></div>
+  ${anomalies.length>0?`<div class="callout amber">⚠️ <div><strong>${anomalies.length} zero-delivery rows</strong> — ₹${F(anomalies.reduce((s,r)=>s+r.Total_Payout,0))} paid with 0 LM orders.</div></div>`:''}
+
+  <div class="cr c1">
+    <div class="cc">
+      <div class="ct">Vendor-wise CPO Breakdown
+        <span class="ct-sub">LM CPO = LM Payout w/o SR ÷ LM Orders &nbsp;|&nbsp; Club CPO = Club Payout ÷ Clubbed Orders &nbsp;|&nbsp; SDD = SDD Payout ÷ SDD Orders</span>
+      </div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>Vendor Name</th><th>Vendor ID</th><th>Riders</th>
+          <th>LM Orders</th><th class="num">LM CPO</th>
+          <th>Club Orders</th><th class="num">Club CPO</th>
+          <th>SDD Orders</th><th class="num">SDD CPO</th>
+          <th>FM Orders</th><th class="num">FM CPO</th>
+          <th>RTS Orders</th><th class="num">RTS CPO</th>
+          <th>Band</th>
+        </tr></thead>
+        <tbody id="vcpo-tb"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="cr c2">
+    <div class="cc">
+      <div class="ct">Vendor LM CPO (₹/LM Order) <span class="ct-sub">Green &lt;₹15 | Amber ₹15-25 | Red &gt;₹25</span></div>
+      <div class="cw" id="hw-vcpo"><canvas id="c-vcpo"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct">CPO vs Delivery Rate <span class="ct-sub">Ideal = high delivery% + low CPO (top-left)</span></div>
+      <div class="cw" style="height:260px"><canvas id="c-scatter"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cr c1">
+    <div class="cc">
+      <div class="ct">Hub-wise CPO Breakdown
+        <span class="ct-sub">Same formulas applied at hub level</span>
+      </div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>Hub</th><th>State</th>
+          <th>LM Orders</th><th class="num">LM CPO</th>
+          <th>Club Orders</th><th class="num">Club CPO</th>
+          <th>SDD Orders</th><th class="num">SDD CPO</th>
+          <th>FM Orders</th><th class="num">FM CPO</th>
+          <th>RTS Orders</th><th class="num">RTS CPO</th>
+          <th>Del%</th><th>Band</th>
+        </tr></thead>
+        <tbody id="hcpo-tb"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="cr c1">
+    <div class="cc">
+      <div class="ct">Hub LM CPO (₹/LM Order) — Top 20 by volume</div>
+      <div class="cw" id="hw-hcpo"><canvas id="c-hcpo"></canvas></div>
+    </div>
+  </div>
+
+  ${anomalies.length>0?`
+  <div class="sti">Zero-Delivery Payout Anomalies</div>
+  <div class="cc"><div class="tw"><table>
+    <thead><tr><th>Rider</th><th>Hub</th><th>Vendor</th><th>Date</th><th>Assigned</th><th>LM Orders</th><th>Payout</th></tr></thead>
+    <tbody>${anomalies.map(r=>`<tr><td>${r.rider_name}</td><td>${r.hub}</td><td>${r.parent_name||r.parent_id}</td><td>${r.order_date}</td><td class="num">${r.Total_assigned}</td><td><span class="badge lo">0</span></td><td class="num">${FC(r.Total_Payout)}</td></tr>`).join('')}</tbody>
+  </table></div></div>`:''}
+  `;
+
+  // KPI cards
+  mkK('k-cpo',[
+    {l:'Total LM Payout (w/o SR)',v:FC(S(DATA,'LM_Payout_without_SR')),s:'base last mile pay',c:'bl'},
+    {l:'Total LM Orders',v:F(totalLM),s:'delivered',c:'gn'},
+    {l:'Avg LM CPO',v:FC(avgLMCPO),s:'₹ per LM order',c:avgLMCPO<15?'gn':avgLMCPO<=25?'am':'rd'},
+    {l:'Best Vendor LM CPO',v:FC(bestV?.lm_cpo||0),s:bestV?.name?.substring(0,15)||'',c:'gn'},
+    {l:'Worst Vendor LM CPO',v:FC(worstV?.lm_cpo||0),s:worstV?.name?.substring(0,15)||'',c:'rd'},
+    {l:'Anomaly Rows',v:anomalies.length,s:'zero orders + payout',c:anomalies.length>0?'am':'gn'},
+  ]);
+
+  // Vendor table
+  const vSorted=[...vArr].filter(v=>v.lm_cpo!==null).sort((a,b)=>b.lm_cpo-a.lm_cpo);
+  document.getElementById('vcpo-tb').innerHTML=vArr.map((v,i)=>
+    `<tr>
+      <td><strong>${v.name}</strong></td>
+      <td class="num">${v.vid}</td>
+      <td class="num">${v.riders}</td>
+      <td class="num">${F(v.lm)}</td><td>${fCPO(v.lm_cpo)}</td>
+      <td class="num">${F(v.club)}</td><td>${fCPO(v.club_cpo)}</td>
+      <td class="num">${F(v.sdd)}</td><td>${fCPO(v.sdd_cpo)}</td>
+      <td class="num">${F(v.fm)}</td><td>${fCPO(v.fm_cpo)}</td>
+      <td class="num">${F(v.rts)}</td><td>${fCPO(v.rts_cpo)}</td>
+      <td>${cpoBadge(v.lm_cpo||0)}</td>
+    </tr>`
+  ).join('');
+
+  // Hub table
+  const hSortedByLM=hArr.slice(0,30);
+  document.getElementById('hcpo-tb').innerHTML=hArr.map((h,i)=>
+    `<tr>
+      <td><strong>${h.hub}</strong></td><td>${h.st}</td>
+      <td class="num">${F(h.lm)}</td><td>${fCPO(h.lm_cpo)}</td>
+      <td class="num">${F(byH[h.hub]?.club||0)}</td><td>${fCPO(h.club_cpo)}</td>
+      <td class="num">${F(byH[h.hub]?.sdd||0)}</td><td>${fCPO(h.sdd_cpo)}</td>
+      <td class="num">${F(byH[h.hub]?.fm||0)}</td><td>${fCPO(h.fm_cpo)}</td>
+      <td class="num">${F(byH[h.hub]?.rts||0)}</td><td>${fCPO(h.rts_cpo)}</td>
+      <td class="num">${h.dr}%</td>
+      <td>${cpoBadge(h.lm_cpo||0)}</td>
+    </tr>`
+  ).join('');
+
+  // Vendor LM CPO bar chart — top 20 by LM volume
+  const vChart=vArr.filter(v=>v.lm_cpo!==null).slice(0,20);
+  document.getElementById('hw-vcpo').style.height=hH(vChart.length);
+  ch('c-vcpo',{type:'bar',data:{
+    labels:vChart.map(v=>v.name.length>20?v.name.slice(0,18)+'…':v.name),
+    datasets:[{
+      data:vChart.map(v=>v.lm_cpo),
+      backgroundColor:vChart.map(v=>v.lm_cpo<15?'#16a34a':v.lm_cpo<=25?'#d97706':'#dc2626'),
+      borderRadius:3
+    }]
+  },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ₹${c.raw}/order`}}},
+    scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+v,font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+  });
+
+  // Scatter: LM CPO vs Delivery Rate per vendor
+  const scD=vArr.filter(v=>v.lm_cpo!==null).map(v=>{
+    const rows=DATA.filter(r=>r.parent_id===v.vid);
+    const dr=rows.reduce((s,r)=>({lm:s.lm+r.lm_orders,as:s.as+r.Total_assigned}),{lm:0,as:0});
+    return{x:dr.as>0?R2(dr.lm/dr.as*100):0,y:v.lm_cpo,name:v.name};
+  });
+  ch('c-scatter',{type:'scatter',data:{datasets:[{data:scD,backgroundColor:'rgba(0,117,106,.55)',pointRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.name} | LM CPO:₹${c.raw.y} | Del:${c.raw.x}%`}}},
+      scales:{
+        x:{title:{display:true,text:'Delivery Rate %',font:{size:9}},grid:{color:GC},ticks:{font:{size:9}}},
+        y:{title:{display:true,text:'LM CPO (₹)',font:{size:9}},grid:{color:GC},ticks:{font:{size:9}}}
+      }
+    }
+  });
+
+  // Hub LM CPO bar chart — top 20
+  const hChart=hArr.filter(h=>h.lm_cpo!==null).slice(0,20);
+  document.getElementById('hw-hcpo').style.height=hH(hChart.length);
+  ch('c-hcpo',{type:'bar',data:{
+    labels:hChart.map(h=>h.hub),
+    datasets:[{
+      data:hChart.map(h=>h.lm_cpo),
+      backgroundColor:hChart.map(h=>h.lm_cpo<15?'#16a34a':h.lm_cpo<=25?'#d97706':'#dc2626'),
+      borderRadius:3
+    }]
+  },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ₹${c.raw}/order`}}},
+    scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+v,font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+  });
 }
 
 /* RIDER LIFECYCLE */
@@ -750,7 +951,7 @@ function parseRows(lines){
   const header=parseCSVLine(lines[0]);const idx={};header.forEach((h,i)=>{idx[h.replace(/[^a-z0-9]/gi,'_').toLowerCase()]=i;});
   const g=(row,names,def)=>{for(const n of names){if(idx[n]!==undefined)return row[idx[n]]||def||'';}return def||'';};
   return lines.slice(1).map(parseCSVLine).filter(c=>c.length>5).map(c=>({
-    parent_id:g(c,['parent_id'],''),pincode:g(c,['pincode'],''),pincode_category:g(c,['pincode_category'],''),
+    parent_name:g(c,['parent_name'],''),parent_id:g(c,['parent_id'],''),pincode:g(c,['pincode'],''),pincode_category:g(c,['pincode_category'],''),
     rider_id:g(c,['rider_id'],''),rider_name:g(c,['rider_name'],''),hub:g(c,['hub'],''),
     state:g(c,['state'],''),city:g(c,['city'],''),order_date:g(c,['order_date','order_day'],''),
     fm_orders:+g(c,['fm_orders'],0)||0,lm_orders:+g(c,['lm_orders'],0)||0,fwd_orders:+g(c,['fwd_orders'],0)||0,rev_orders:+g(c,['rev_orders'],0)||0,
@@ -800,6 +1001,7 @@ async function loadAPI(){
 
     // Map JSON rows to our internal format
     const newData = json.rows.map(r => ({
+      parent_name: r['parent_name']||r['vendor_name']||'',
       parent_id: r['parent_id']||'', pincode: r['pincode']||'',
       pincode_category: r['pincode_category']||'', rider_id: String(r['rider_id']||''),
       rider_name: r['rider_name']||'', hub: r['hub']||'',
