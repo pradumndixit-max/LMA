@@ -35,16 +35,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
   box-shadow:2px 0 8px rgba(0,0,0,.04)
 }
 .sb-logo{
-  padding:16px 18px 14px;
-  border-bottom:1px solid rgba(0,117,106,.2);
+  padding:18px 18px 14px;
+  border-bottom:1px solid rgba(0,117,106,.15);
   background:#ffffff;
-  border-top:3px solid #C8D400;
+  border-top:4px solid #C8D400;
 }
-.sfx-logo{display:flex;align-items:center;gap:10px}
-.sfx-text{display:flex;flex-direction:column}
-.sfx-name{font-size:14px;font-weight:800;color:#00756A;letter-spacing:.06em;line-height:1}
-.sfx-tag{font-size:9px;color:#C8D400;font-weight:700;letter-spacing:.08em;margin-top:2px;font-style:italic}
-.sfx-sub{font-size:10px;color:var(--tx3);margin-top:8px;font-weight:500;letter-spacing:.02em;padding-left:2px}
+.sfx-logo{display:flex;align-items:center;gap:11px}
+.sfx-text{display:flex;flex-direction:column;gap:1px}
+.sfx-name{
+  font-size:16px;font-weight:900;
+  color:#008B70;
+  letter-spacing:.04em;line-height:1;
+  font-family:'DM Sans',Arial,sans-serif
+}
+.sfx-tag{
+  font-size:10px;color:#008B70;
+  font-weight:600;letter-spacing:.01em;
+  font-style:italic;opacity:.85;
+  font-family:'DM Sans',Arial,sans-serif
+}
+.sfx-sub{
+  font-size:10px;color:#7da8a3;
+  margin-top:9px;font-weight:500;
+  letter-spacing:.02em;padding-left:2px;
+  font-family:'DM Sans',Arial,sans-serif
+}
 .ns{
   padding:14px 16px 4px;
   font-size:9px;font-weight:700;color:#7da8a3;
@@ -52,8 +67,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
 }
 .ni{
   display:flex;align-items:center;gap:9px;
-  padding:8px 16px 8px 20px;
-  font-size:12.5px;color:var(--tx2);
+  padding:9px 16px 9px 20px;
+  font-size:13px;color:var(--tx2);
   cursor:pointer;border-left:3px solid transparent;
   transition:all .15s;position:relative;
   margin:1px 0
@@ -161,7 +176,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
 .kpi.bl{--ac:var(--bl)}.kpi.gn{--ac:var(--gn)}.kpi.am{--ac:var(--am)}
 .kpi.rd{--ac:var(--rd)}.kpi.pu{--ac:var(--pu)}.kpi.tl{--ac:var(--tl)}.kpi.or{--ac:var(--or)}
 .kl{font-size:10px;color:var(--tx3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-.kv{font-size:22px;font-weight:700;line-height:1;color:var(--tx)}
+.kv{font-size:23px;font-weight:700;line-height:1;color:var(--tx)}
 .ks{font-size:11px;color:var(--tx3);margin-top:5px}
 
 /* ── CHART GRID ── */
@@ -188,7 +203,7 @@ thead th{
   text-align:left;border-bottom:2px solid #c5dbd9;
   white-space:nowrap;background:#f4f8f7;position:sticky;top:0
 }
-tbody td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--tx);white-space:nowrap;font-size:12px}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--tx);white-space:nowrap;font-size:12.5px}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:var(--sf2)}
 .num{font-family:'DM Mono',monospace;font-size:11px}
@@ -279,16 +294,19 @@ tbody tr:hover{background:var(--sf2)}
 <div class="sb">
 <div class="sb-logo">
   <div class="sfx-logo">
-    <svg width="32" height="32" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Shadowfax chevron/arrow mark in yellow-green -->
-      <polygon points="8,8 36,30 8,52 18,52 46,30 18,8" fill="#C8D400"/>
+    <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Main arrow body: right-pointing, yellow-green -->
+      <!-- Shape: starts top-left, goes to point on right, comes back, with notch cut at bottom-right -->
+      <polygon points="0,0 60,0 100,50 60,100 0,100 0,70 50,50 0,30" fill="#C8D400"/>
+      <!-- Dark triangular notch cut into bottom-right of arrow -->
+      <polygon points="58,62 100,100 68,100" fill="#2d5c58"/>
     </svg>
     <div class="sfx-text">
       <span class="sfx-name">SHADOWFAX</span>
       <span class="sfx-tag">Think ahead!</span>
     </div>
   </div>
-  <div class="sfx-sub">LMA Vendor & Rider Portal</div>
+  <div class="sfx-sub">LMA Vendor &amp; Rider Portal</div>
 </div>
 <div class="ns">Overview</div>
 <div class="ni act" onclick="nav('overview',this)"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2H3V4zm0 4h14v8a1 1 0 01-1 1H4a1 1 0 01-1-1V8z"/></svg>Overview</div>
