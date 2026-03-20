@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>LMA Vendor & Rider Portal</title>
+<title>LMA Portal — Shadowfax</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#f0f2f5;--sf:#ffffff;--sf2:#f8f9fb;--bd:#e4e8f0;
-  --tx:#111827;--tx2:#4b5563;--tx3:#9ca3af;
-  --bl:#2563eb;--bll:#eff6ff;--bld:#1d4ed8;
+  --bg:#f0f4f4;--sf:#ffffff;--sf2:#f4f8f7;--bd:#d4e4e2;
+  --tx:#0d2b29;--tx2:#2d5c58;--tx3:#7da8a3;
+  --bl:#00756A;--bll:#e6f4f2;--bld:#005a51;
   --gn:#16a34a;--gnl:#f0fdf4;--gnd:#15803d;
   --am:#d97706;--aml:#fffbeb;
   --rd:#dc2626;--rdl:#fef2f2;
   --pu:#7c3aed;--pul:#f5f3ff;
-  --tl:#0d9488;--tll:#f0fdfa;
-  --or:#ea580c;--orl:#fff7ed;
+  --tl:#00756A;--tll:#e6f4f2;
+  --or:#C8D400;--orl:#f9fce6;
+  --accent:#C8D400;
   --r:8px;--rl:12px;--sb:240px
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -34,15 +35,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
   box-shadow:2px 0 8px rgba(0,0,0,.04)
 }
 .sb-logo{
-  padding:18px 20px 16px;
-  border-bottom:1px solid var(--bd);
-  background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)
+  padding:16px 18px 14px;
+  border-bottom:1px solid rgba(0,117,106,.2);
+  background:#ffffff;
+  border-top:3px solid #C8D400;
 }
-.sb-logo .brand{font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px}
-.sb-logo .sub{font-size:10px;color:rgba(255,255,255,.65);margin-top:3px;margin-left:24px;letter-spacing:.02em}
+.sfx-logo{display:flex;align-items:center;gap:10px}
+.sfx-text{display:flex;flex-direction:column}
+.sfx-name{font-size:14px;font-weight:800;color:#00756A;letter-spacing:.06em;line-height:1}
+.sfx-tag{font-size:9px;color:#C8D400;font-weight:700;letter-spacing:.08em;margin-top:2px;font-style:italic}
+.sfx-sub{font-size:10px;color:var(--tx3);margin-top:8px;font-weight:500;letter-spacing:.02em;padding-left:2px}
 .ns{
   padding:14px 16px 4px;
-  font-size:9px;font-weight:700;color:var(--tx3);
+  font-size:9px;font-weight:700;color:#7da8a3;
   text-transform:uppercase;letter-spacing:.1em
 }
 .ni{
@@ -55,8 +60,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
 }
 .ni:hover{background:var(--sf2);color:var(--tx);border-left-color:var(--bd)}
 .ni.act{
-  background:var(--bll);color:var(--bl);
-  border-left-color:var(--bl);font-weight:600
+  background:#e6f4f2;color:#00756A;
+  border-left-color:#C8D400;font-weight:600
 }
 .ni svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
 .ni.act svg{opacity:1}
@@ -69,13 +74,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
 
 /* ── MAIN ── */
 .mn{margin-left:var(--sb);padding:0;min-height:100vh;display:flex;flex-direction:column}
+.mn::before{content:'';display:block;height:3px;background:linear-gradient(90deg,#00756A 0%,#C8D400 100%)}
 
 /* ── TOPBAR ── */
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:16px 24px 0;gap:12px;flex-wrap:nowrap
 }
-.topbar-left h1{font-size:20px;font-weight:700;color:var(--tx);line-height:1.2}
+.topbar-left h1{font-size:20px;font-weight:700;color:#0d2b29;line-height:1.2}
 .topbar-left p{font-size:11px;color:var(--tx3);margin-top:3px}
 .topbar-r{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .ss{font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap}
@@ -88,7 +94,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
   transition:all .15s;white-space:nowrap
 }
 .btn:hover{background:var(--sf2);border-color:var(--bl)}
-.btn.bl{background:var(--bl);color:#fff;border-color:var(--bl);box-shadow:0 1px 4px rgba(37,99,235,.3)}
+.btn.bl{background:var(--bl);color:#fff;border-color:var(--bl);box-shadow:0 1px 4px rgba(0,117,106,.3)}
 .btn.bl:hover{background:var(--bld)}
 .btn.gn{background:var(--gn);color:#fff;border-color:var(--gn)}
 .btn.gn:hover{background:var(--gnd)}
@@ -178,9 +184,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);font-
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead th{
   padding:8px 10px;font-size:10px;font-weight:700;
-  color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;
-  text-align:left;border-bottom:2px solid var(--bd);
-  white-space:nowrap;background:var(--sf2);position:sticky;top:0
+  color:#00756A;text-transform:uppercase;letter-spacing:.05em;
+  text-align:left;border-bottom:2px solid #c5dbd9;
+  white-space:nowrap;background:#f4f8f7;position:sticky;top:0
 }
 tbody td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--tx);white-space:nowrap;font-size:12px}
 tbody tr:last-child td{border-bottom:none}
@@ -222,7 +228,7 @@ tbody tr:hover{background:var(--sf2)}
 
 /* ── MODAL ── */
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(2px)}.ov.open{display:flex}
-.modal{background:var(--sf);border-radius:16px;padding:0;max-width:520px;width:94%;box-shadow:0 25px 80px rgba(0,0,0,.2);overflow:hidden}
+.modal{background:var(--sf);border-radius:16px;padding:0;max-width:520px;width:94%;box-shadow:0 25px 80px rgba(0,0,0,.2);overflow:hidden;border-top:3px solid #C8D400}
 .modal-head{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between}
 .modal-head h3{font-size:16px;font-weight:600}.modal-close{background:none;border:none;cursor:pointer;font-size:20px;color:var(--tx3);line-height:1;padding:4px}
 .tab-bar{display:flex;border-bottom:1px solid var(--bd);margin:16px 0 0;padding:0 24px}
@@ -271,7 +277,19 @@ tbody tr:hover{background:var(--sf2)}
 <body>
 <div class="wrap">
 <div class="sb">
-<div class="sb-logo"><div class="brand">⚡ LMA Portal</div><div class="sub">Vendor & Rider Analytics</div></div>
+<div class="sb-logo">
+  <div class="sfx-logo">
+    <svg width="32" height="32" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Shadowfax chevron/arrow mark in yellow-green -->
+      <polygon points="8,8 36,30 8,52 18,52 46,30 18,8" fill="#C8D400"/>
+    </svg>
+    <div class="sfx-text">
+      <span class="sfx-name">SHADOWFAX</span>
+      <span class="sfx-tag">Think ahead!</span>
+    </div>
+  </div>
+  <div class="sfx-sub">LMA Vendor & Rider Portal</div>
+</div>
 <div class="ns">Overview</div>
 <div class="ni act" onclick="nav('overview',this)"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2H3V4zm0 4h14v8a1 1 0 01-1 1H4a1 1 0 01-1-1V8z"/></svg>Overview</div>
 <div class="ns">Operations</div>
