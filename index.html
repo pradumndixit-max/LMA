@@ -249,6 +249,23 @@ tbody tr:hover{background:var(--sf2)}
 @media(max-width:1024px){:root{--sb:200px}.kgrid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:880px){.sb{display:none}.mn{margin-left:0}.c2,.c3{grid-template-columns:1fr}.topbar{flex-wrap:wrap}.filters{flex-wrap:wrap}}
 @media(max-width:560px){.kgrid{grid-template-columns:1fr 1fr}}
+
+/* ── KPI SECTION LABEL ── */
+.kpi-section-label{
+  font-size:11px;font-weight:700;color:var(--tx3);
+  text-transform:uppercase;letter-spacing:.08em;
+  margin:18px 0 8px;display:flex;align-items:center;gap:8px
+}
+.kpi-section-label::after{content:'';flex:1;height:1px;background:var(--bd)}
+
+/* ── KPI GRID VARIANTS ── */
+.kgrid-3{grid-template-columns:repeat(3,1fr)!important}
+.kgrid-4{grid-template-columns:repeat(4,1fr)!important}
+.kgrid-5{grid-template-columns:repeat(5,1fr)!important}
+.kgrid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+
+@media(max-width:1100px){.kgrid-5{grid-template-columns:repeat(3,1fr)!important}}
+@media(max-width:880px){.kgrid-3,.kgrid-4,.kgrid-5{grid-template-columns:1fr 1fr!important}}
 </style>
 </head>
 <body>
@@ -320,25 +337,91 @@ function mkK(id,items){document.getElementById(id).innerHTML='<div class="kgrid"
 
 /* OVERVIEW */
 function rOv(){
-  const lm=S(DATA,'lm_orders'),fwd=S(DATA,'fwd_orders'),rev=S(DATA,'rev_orders'),sdd=S(DATA,'sdd_orders'),co=S(DATA,'clubbed_orders'),ta=S(DATA,'Total_assigned');
-  const tp=S(DATA,'Total_Payout'),lmp=S(DATA,'LM_Payout'),club=S(DATA,'Club_Payout'),sddp=S(DATA,'SDD_Payout');
-  const riders=new Set(DATA.map(r=>r.rider_id)).size,hubs=new Set(DATA.map(r=>r.hub)).size;
-  const dsr=A(DATA.filter(r=>r.DSR>0),'DSR'),dr=ta>0?lm/ta*100:0;
+  // Order metrics
+  const lm_del=S(DATA,'lm_orders');
+  const club=S(DATA,'clubbed_orders');
+  const sdd_o=S(DATA,'sdd_orders');
+  const totalLM = lm_del + club + sdd_o;   // Total LM = lm + clubbed + sdd
+  const fm_o=S(DATA,'fm_orders');
+  const rts_o=S(DATA,'rts_orders');
+  const fwd=S(DATA,'fwd_orders');
+  const rev=S(DATA,'rev_orders');
+  const ta=S(DATA,'Total_assigned');
+
+  // Payout metrics
+  const lm_pay_no_sr=S(DATA,'LM_Payout_without_SR');
+  const club_pay=S(DATA,'Club_Payout');
+  const sdd_pay=S(DATA,'SDD_Payout');
+  const totalLMPay = lm_pay_no_sr + club_pay + sdd_pay;  // LM Payout w/o SR + Club + SDD
+  const fm_pay=S(DATA,'FM_Payout');
+  const rts_pay=S(DATA,'RTS_payout');
+  const slab=S(DATA,'Slab_Incentive');
+  const large=S(DATA,'Large_amount');
+  const incentives = slab + large;  // Slab + Large amount
+
+  const riders=new Set(DATA.map(r=>r.rider_id)).size;
+  const hubs=new Set(DATA.map(r=>r.hub)).size;
+  const dsr=A(DATA.filter(r=>r.DSR>0),'DSR');
+  const dr=ta>0?lm_del/ta*100:0;
+
+  // Vendor contribution for callout
   const byV={};DATA.forEach(r=>{if(!byV[r.parent_id])byV[r.parent_id]=0;byV[r.parent_id]+=r.lm_orders;});
   const top3=Object.values(byV).sort((a,b)=>b-a).slice(0,3).reduce((s,v)=>s+v,0);
-  const top3p=lm>0?top3/lm*100:0;
+  const top3p=totalLM>0?top3/totalLM*100:0;
+
   const el=document.getElementById('pg-overview');
-  el.innerHTML=(top3p>60?'<div class="callout warn">⚠️ <div>Top 3 vendors = <strong>'+top3p.toFixed(1)+'%</strong> of LM orders. High concentration risk.</div></div>':'<div class="callout ok">✅ <div>Volume is well distributed across vendors.</div></div>')+'<div id="k-ov"></div><div class="cr c2"><div class="cc"><div class="ct">Order Types Split</div><div class="lr" id="l-ot"></div><div class="cw" style="height:190px"><canvas id="c-ot"></canvas></div></div><div class="cc"><div class="ct">Payout Components (₹)</div><div class="lr" id="l-pc"></div><div class="cw" style="height:190px"><canvas id="c-pc"></canvas></div></div></div><div class="cr c2"><div class="cc"><div class="ct">LM Orders by State</div><div class="cw" style="height:200px"><canvas id="c-sb"></canvas></div></div><div class="cc"><div class="ct">Vendor LM Contribution %</div><div class="cw" style="height:200px"><canvas id="c-vcont"></canvas></div></div></div>';
-  mkK('k-ov',[{l:'LM Delivered',v:F(lm),s:'Del: '+dr.toFixed(1)+'%',c:'bl'},{l:'Forward',v:F(fwd),s:PC(fwd,lm)+' of LM',c:'gn'},{l:'Reverse',v:F(rev),s:PC(rev,lm),c:'am'},{l:'SDD',v:F(sdd),s:'same day',c:'pu'},{l:'Total Payout',v:FC(tp),s:'all components',c:'tl'},{l:'LM Payout',v:FC(lmp),s:'last mile',c:'gn'},{l:'Club Payout',v:FC(club),s:'bonus',c:'or'},{l:'Avg DSR',v:dsr.toFixed(1)+'%',s:'success rate',c:dsr>=70?'gn':dsr>=55?'am':'rd'},{l:'Active Riders',v:F(riders),s:hubs+' hubs',c:'bl'}]);
-  mkL('l-ot',[{l:'Fwd '+F(fwd),c:'#2563eb'},{l:'Rev '+F(rev),c:'#d97706'},{l:'SDD '+F(sdd),c:'#7c3aed'},{l:'Club '+F(co),c:'#0d9488'}]);
-  ch('c-ot',{type:'doughnut',data:{labels:['Forward','Reverse','SDD','Clubbed'],datasets:[{data:[fwd,rev,sdd,co],backgroundColor:['#2563eb','#d97706','#7c3aed','#0d9488'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'64%'}});
-  mkL('l-pc',[{l:'LM '+FC(lmp),c:'#2563eb'},{l:'Club '+FC(club),c:'#16a34a'},{l:'SDD '+FC(sddp),c:'#7c3aed'}]);
-  ch('c-pc',{type:'doughnut',data:{labels:['LM','Club','SDD'],datasets:[{data:[lmp,club,sddp],backgroundColor:['#2563eb','#16a34a','#7c3aed'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' ₹'+F(c.raw)}}},cutout:'64%'}});
+  el.innerHTML=
+    (top3p>60
+      ?'<div class="callout warn">⚠️ <div>Top 3 vendors = <strong>'+top3p.toFixed(1)+'%</strong> of LM orders. High concentration risk.</div></div>'
+      :'<div class="callout ok">✅ <div>Volume is well distributed. Top 3 vendors = '+top3p.toFixed(1)+'%.</div></div>'
+    )+
+
+    // ── SECTION: ORDER BIFURCATION ──
+    '<div class="kpi-section-label">📦 Order Bifurcation</div>'+
+    '<div class="kgrid kgrid-3">'+
+      '<div class="kpi bl"><div class="kl">Total LM Orders</div><div class="kv">'+F(totalLM)+'</div><div class="ks">LM + Clubbed + SDD</div></div>'+
+      '<div class="kpi am"><div class="kl">FM Orders</div><div class="kv">'+F(fm_o)+'</div><div class="ks">first mile</div></div>'+
+      '<div class="kpi rd"><div class="kl">RTS Orders</div><div class="kv">'+F(rts_o)+'</div><div class="ks">return to shipper</div></div>'+
+    '</div>'+
+
+    // ── SECTION: PAYOUT BIFURCATION ──
+    '<div class="kpi-section-label">💰 Payout Bifurcation</div>'+
+    '<div class="kgrid kgrid-4">'+
+      '<div class="kpi gn"><div class="kl">Total LM Payout</div><div class="kv">'+FC(totalLMPay)+'</div><div class="ks">w/o SR + Club + SDD</div></div>'+
+      '<div class="kpi tl"><div class="kl">FM Payout</div><div class="kv">'+FC(fm_pay)+'</div><div class="ks">first mile</div></div>'+
+      '<div class="kpi or"><div class="kl">RTS Payout</div><div class="kv">'+FC(rts_pay)+'</div><div class="ks">return to shipper</div></div>'+
+      '<div class="kpi pu"><div class="kl">Incentives</div><div class="kv">'+FC(incentives)+'</div><div class="ks">Slab + Large shipment</div></div>'+
+    '</div>'+
+
+    // ── SECTION: OPERATIONAL SUMMARY ──
+    '<div class="kpi-section-label">📊 Operational Summary</div>'+
+    '<div class="kgrid kgrid-5">'+
+      '<div class="kpi bl"><div class="kl">LM Delivered</div><div class="kv">'+F(lm_del)+'</div><div class="ks">Del rate: '+dr.toFixed(1)+'%</div></div>'+
+      '<div class="kpi gn"><div class="kl">Forward</div><div class="kv">'+F(fwd)+'</div><div class="ks">'+PC(fwd,lm_del)+' of LM</div></div>'+
+      '<div class="kpi am"><div class="kl">Reverse</div><div class="kv">'+F(rev)+'</div><div class="ks">'+PC(rev,lm_del)+'</div></div>'+
+      '<div class="kpi tl"><div class="kl">Avg DSR</div><div class="kv">'+dsr.toFixed(1)+'%</div><div class="ks '+(dsr>=70?'':dsr>=55?'':'')+'">success rate</div></div>'+
+      '<div class="kpi bl"><div class="kl">Active Riders</div><div class="kv">'+F(riders)+'</div><div class="ks">'+hubs+' hubs</div></div>'+
+    '</div>'+
+
+    // ── CHARTS ──
+    '<div class="cr c2">'+
+      '<div class="cc"><div class="ct">Order Types Split</div><div class="lr" id="l-ot"></div><div class="cw" style="height:190px"><canvas id="c-ot"></canvas></div></div>'+
+      '<div class="cc"><div class="ct">Payout Components (₹)</div><div class="lr" id="l-pc"></div><div class="cw" style="height:190px"><canvas id="c-pc"></canvas></div></div>'+
+    '</div>'+
+    '<div class="cr c2">'+
+      '<div class="cc"><div class="ct">LM Orders by State</div><div class="cw" style="height:200px"><canvas id="c-sb"></canvas></div></div>'+
+      '<div class="cc"><div class="ct">Vendor LM Contribution %</div><div class="cw" style="height:200px"><canvas id="c-vcont"></canvas></div></div>'+
+    '</div>';
+
+  mkL('l-ot',[{l:'Fwd '+F(fwd),c:'#2563eb'},{l:'Rev '+F(rev),c:'#d97706'},{l:'SDD '+F(sdd_o),c:'#7c3aed'},{l:'Club '+F(club),c:'#0d9488'}]);
+  ch('c-ot',{type:'doughnut',data:{labels:['Forward','Reverse','SDD','Clubbed'],datasets:[{data:[fwd,rev,sdd_o,club],backgroundColor:['#2563eb','#d97706','#7c3aed','#0d9488'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'64%'}});
+  mkL('l-pc',[{l:'LM Pay '+FC(lm_pay_no_sr),c:'#2563eb'},{l:'Club '+FC(club_pay),c:'#16a34a'},{l:'SDD '+FC(sdd_pay),c:'#7c3aed'},{l:'Incentives '+FC(incentives),c:'#ea580c'}]);
+  ch('c-pc',{type:'doughnut',data:{labels:['LM Payout','Club Payout','SDD Payout','Incentives'],datasets:[{data:[lm_pay_no_sr,club_pay,sdd_pay,incentives],backgroundColor:['#2563eb','#16a34a','#7c3aed','#ea580c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' ₹'+F(c.raw)}}},cutout:'64%'}});
   const bS={};DATA.forEach(r=>{if(!bS[r.state])bS[r.state]={f:0,rv:0};bS[r.state].f+=r.fwd_orders;bS[r.state].rv+=r.rev_orders;});
   const st=Object.entries(bS).sort((a,b)=>(b[1].f+b[1].rv)-(a[1].f+a[1].rv));
-  ch('c-sb',{type:'bar',data:{labels:st.map(([s])=>s),datasets:[{label:'Fwd',data:st.map(([,v])=>v.f),backgroundColor:'#2563eb',borderRadius:3},{label:'Rev',data:st.map(([,v])=>v.rv),backgroundColor:'#d97706',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9},maxRotation:40}},y:{stacked:true,grid:{color:GC},ticks:{font:{size:9}}}}}});
+  ch('c-sb',{type:'bar',data:{labels:st.map(([s])=>s),datasets:[{label:'Fwd',data:st.map(([,v])=>v.f),backgroundColor:'#2563eb',borderRadius:3},{label:'Rev',data:st.map(([,v])=>v.rv),backgroundColor:'#d97706',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9},maxRotation:40}},y:{stacked:true,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9}}}}}});
   const vArr=Object.entries(byV).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  ch('c-vcont',{type:'doughnut',data:{labels:vArr.map(([v])=>'V:'+v.slice(-5)),datasets:[{data:vArr.map(([,n])=>n),backgroundColor:PAL,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+' ('+( c.raw/lm*100).toFixed(1)+'%)'}}},cutout:'55%'}});
+  ch('c-vcont',{type:'doughnut',data:{labels:vArr.map(([v])=>'V:'+v.slice(-5)),datasets:[{data:vArr.map(([,n])=>n),backgroundColor:PAL,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.raw+' ('+(c.raw/totalLM*100).toFixed(1)+'%)'}}},cutout:'55%'}});
   document.getElementById('psub').textContent=DATA.length+' rows · '+[...new Set(DATA.map(r=>r.order_date))].sort().join(', ')+' · Snapshot';
 }
 
