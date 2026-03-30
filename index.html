@@ -1088,29 +1088,26 @@ rOv();
   }
 
   async function fetchAllRows() {
-    // Get total count first
-    const { count } = await client.from('lma_data').select('*', { count: 'exact', head: true });
-    console.log('Total rows: ' + count);
-
-    const batchSize = 1000;
-    const totalBatches = Math.ceil(count / batchSize);
-    const PARALLEL = 10; // fetch 10 batches at once = 10x faster
-    let all = [];
-
-    for (let i = 0; i < totalBatches; i += PARALLEL) {
-      const promises = [];
-      for (let j = i; j < Math.min(i + PARALLEL, totalBatches); j++) {
-        promises.push(
-          client.from('lma_data').select('*')
-            .order('id', { ascending: true })
-            .range(j * batchSize, (j + 1) * batchSize - 1)
-        );
-      }
+    const BATCH = 1000, PARALLEL = 20;
+    let all = [], offset = 0, more = true;
+    while (more) {
+      // Fire PARALLEL requests simultaneously
+      const promises = Array.from({ length: PARALLEL }, (_, i) =>
+        client.from('lma_data').select('*')
+          .order('id', { ascending: true })
+          .range(offset + i * BATCH, offset + (i + 1) * BATCH - 1)
+      );
       const results = await Promise.all(promises);
+      let anyFull = false;
       results.forEach(({ data }) => {
-        if (data) all = all.concat(data.map(mapRow));
+        if (data && data.length > 0) {
+          all = all.concat(data.map(mapRow));
+          if (data.length === BATCH) anyFull = true;
+        }
       });
-      console.log('Supabase: loaded ' + all.length + ' / ' + count + ' rows...');
+      console.log('Loaded ' + all.length + ' rows...');
+      more = anyFull;
+      offset += PARALLEL * BATCH;
     }
     return all;
   }
@@ -1125,14 +1122,13 @@ rOv();
     } catch(e) { console.error('Supabase loader error:', e); }
   });
 
-  // Hide Overview nav + auto-navigate to Orders
+  // Hide Overview + default to Orders
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('div[onclick]').forEach(el => {
       if (el.getAttribute('onclick')?.includes("'overview'")) el.style.display = 'none';
     });
     setTimeout(() => { if (typeof nav === 'function') nav('orders', null); }, 500);
   });
-
 })();
 </script>
 <!-- END SUPABASE AUTO-LOADER -->
