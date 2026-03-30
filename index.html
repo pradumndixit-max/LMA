@@ -1060,20 +1060,25 @@ rOv();
 
 </script>
 </body>
-  <!-- SUPABASE AUTO-LOADER -->
+<!-- SUPABASE AUTO-LOADER -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (async function() {
   const SUPA_URL = "https://rvhmldxqulnecavnyfgm.supabase.co";
   const SUPA_KEY = "sb_publishable_srCMZUmW80l7bZjpsalGVA_dUWLtXpR";
   const client = supabase.createClient(SUPA_URL, SUPA_KEY, {
-  db: { schema: 'public' },
-  global: { headers: { 'Accept-Profile': 'public' } }
-});
+    db: { schema: 'public' },
+    global: { headers: { 'Accept-Profile': 'public' } }
+  });
+
   async function fetchAllRows() {
     let all = [], from = 0, batchSize = 1000, more = true;
     while (more) {
-      const { data, error } = await client.from('lma_data').select('*').order('id', { ascending: true }).range(from, from + batchSize - 1);
+      const { data, error } = await client
+        .from('lma_data')
+        .select('*')
+        .order('id', { ascending: true })
+        .range(from, from + batchSize - 1);
       if (error || !data) { console.error('Supabase error:', error); break; }
       const mapped = data.map(r => ({
         parent_id: r.parent_id, pincode: r.pincode, pincode_category: r.pincode_category,
@@ -1088,16 +1093,22 @@ rOv();
         "WeekTotal Payout": r.week_total_payout, Large_shipment: r.large_shipment,
         Large_amount: r.large_amount, pod: r.pod, Temp: r.temp
       }));
-      all = all.concat(mapped); more = data.length === batch; from += batch;
+      all = all.concat(mapped);
+      more = data.length === batchSize;
+      from += batchSize;
       console.log('Supabase: loaded ' + all.length + ' rows...');
     }
     return all;
   }
+
   window.addEventListener('load', async () => {
-    const rows = await fetchAllRows();
-    console.log(rows.length + ' rows ready');
-    if (typeof parseRows === 'function') parseRows(rows);
-    if (typeof applyData === 'function') applyData(rows, rows);
+    try {
+      console.log('Loading from Supabase...');
+      const rows = await fetchAllRows();
+      console.log('✅ ' + rows.length + ' total rows loaded from Supabase');
+      if (typeof parseRows === 'function') parseRows(rows);
+      if (typeof applyData === 'function') applyData(rows, rows);
+    } catch(e) { console.error('Supabase loader error:', e); }
   });
 })();
 </script>
