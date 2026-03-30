@@ -1068,7 +1068,7 @@ rOv();
   const SUPA_KEY = "sb_publishable_srCMZUmW80l7bZjpsalGVA_dUWLtXpR";
   const client = supabase.createClient(SUPA_URL, SUPA_KEY);
   async function fetchAllRows() {
-    let all = [], from = 0, batchSize = 10000;
+    let all = [], from = 0, batchSize = 20000, more = true;
     while (more) {
       const { data, error } = await client.from('lma_data').select('*').order('id', { ascending: true }).range(from, from + batchSize - 1);
       if (error || !data) { console.error('Supabase error:', error); break; }
