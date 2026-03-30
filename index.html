@@ -1071,7 +1071,7 @@ rOv();
   global: { headers: { 'Accept-Profile': 'public' } }
 });
   async function fetchAllRows() {
-    let all = [], from = 0, batchSize = 20000, more = true;
+    let all = [], from = 0, batchSize = 1000, more = true;
     while (more) {
       const { data, error } = await client.from('lma_data').select('*').order('id', { ascending: true }).range(from, from + batchSize - 1);
       if (error || !data) { console.error('Supabase error:', error); break; }
