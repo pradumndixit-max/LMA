@@ -1071,53 +1071,46 @@ rOv();
     global: { headers: { 'Accept-Profile': 'public' } }
   });
 
+  function mapRow(r) {
+    return {
+      parent_id: r.parent_id, pincode: r.pincode, pincode_category: r.pincode_category,
+      rider_id: r.rider_id, rider_name: r.rider_name, hub: r.hub, state: r.state, city: r.city,
+      order_date: r.order_date, fm_orders: r.fm_orders, lm_orders: r.lm_orders,
+      fwd_orders: r.fwd_orders, rev_orders: r.rev_orders, rts_orders: r.rts_orders,
+      sdd_orders: r.sdd_orders, qc_failed: r.qc_failed, clubbed_orders: r.clubbed_orders,
+      Total_orders: r.total_orders, Total_assigned: r.total_assigned,
+      LM_Payout_without_SR: r.lm_payout_without_sr, FM_Payout: r.fm_payout,
+      Slab_Incentive: r.slab_incentive, RTS_payout: r.rts_payout, DSR: r.dsr,
+      Club_Payout: r.club_payout, SDD_Payout: r.sdd_payout, LM_Payout: r.lm_payout,
+      Total_Payout: r.week_total_payout, Large_shipment: r.large_shipment,
+      Large_amount: r.large_amount, pod: r.pod, Temp: r.temp
+    };
+  }
+
   async function fetchAllRows() {
-    let all = [], from = 0, batchSize = 1000, more = true;
-    while (more) {
-      const { data, error } = await client
-        .from('lma_data')
-        .select('*')
-        .order('id', { ascending: true })
-        .range(from, from + batchSize - 1);
-      if (error || !data) { console.error('Supabase error:', error); break; }
-      const mapped = data.map(r => ({
-        parent_id: r.parent_id,
-        pincode: r.pincode,
-        pincode_category: r.pincode_category,
-        rider_id: r.rider_id,
-        rider_name: r.rider_name,
-        hub: r.hub,
-        state: r.state,
-        city: r.city,
-        order_date: r.order_date,
-        fm_orders: r.fm_orders,
-        lm_orders: r.lm_orders,
-        fwd_orders: r.fwd_orders,
-        rev_orders: r.rev_orders,
-        rts_orders: r.rts_orders,
-        sdd_orders: r.sdd_orders,
-        qc_failed: r.qc_failed,
-        clubbed_orders: r.clubbed_orders,
-        Total_orders: r.total_orders,
-        Total_assigned: r.total_assigned,
-        LM_Payout_without_SR: r.lm_payout_without_sr,
-        FM_Payout: r.fm_payout,
-        Slab_Incentive: r.slab_incentive,
-        RTS_payout: r.rts_payout,
-        DSR: r.dsr,
-        Club_Payout: r.club_payout,
-        SDD_Payout: r.sdd_payout,
-        LM_Payout: r.lm_payout,
-        Total_Payout: r.week_total_payout,
-        Large_shipment: r.large_shipment,
-        Large_amount: r.large_amount,
-        pod: r.pod,
-        Temp: r.temp
-      }));
-      all = all.concat(mapped);
-      more = data.length === batchSize;
-      from += batchSize;
-      console.log('Supabase: loaded ' + all.length + ' rows...');
+    // Get total count first
+    const { count } = await client.from('lma_data').select('*', { count: 'exact', head: true });
+    console.log('Total rows: ' + count);
+
+    const batchSize = 1000;
+    const totalBatches = Math.ceil(count / batchSize);
+    const PARALLEL = 10; // fetch 10 batches at once = 10x faster
+    let all = [];
+
+    for (let i = 0; i < totalBatches; i += PARALLEL) {
+      const promises = [];
+      for (let j = i; j < Math.min(i + PARALLEL, totalBatches); j++) {
+        promises.push(
+          client.from('lma_data').select('*')
+            .order('id', { ascending: true })
+            .range(j * batchSize, (j + 1) * batchSize - 1)
+        );
+      }
+      const results = await Promise.all(promises);
+      results.forEach(({ data }) => {
+        if (data) all = all.concat(data.map(mapRow));
+      });
+      console.log('Supabase: loaded ' + all.length + ' / ' + count + ' rows...');
     }
     return all;
   }
@@ -1126,11 +1119,20 @@ rOv();
     try {
       console.log('Loading from Supabase...');
       const rows = await fetchAllRows();
-      console.log('✅ ' + rows.length + ' total rows loaded from Supabase');
+      console.log('✅ ' + rows.length + ' rows loaded!');
       if (typeof parseRows === 'function') parseRows(rows);
       if (typeof applyData === 'function') applyData(rows, rows);
     } catch(e) { console.error('Supabase loader error:', e); }
   });
+
+  // Hide Overview nav + auto-navigate to Orders
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('div[onclick]').forEach(el => {
+      if (el.getAttribute('onclick')?.includes("'overview'")) el.style.display = 'none';
+    });
+    setTimeout(() => { if (typeof nav === 'function') nav('orders', null); }, 500);
+  });
+
 })();
 </script>
 <!-- END SUPABASE AUTO-LOADER -->
