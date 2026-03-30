@@ -1066,7 +1066,10 @@ rOv();
 (async function() {
   const SUPA_URL = "https://rvhmldxqulnecavnyfgm.supabase.co";
   const SUPA_KEY = "sb_publishable_srCMZUmW80l7bZjpsalGVA_dUWLtXpR";
-  const client = supabase.createClient(SUPA_URL, SUPA_KEY);
+  const client = supabase.createClient(SUPA_URL, SUPA_KEY, {
+  db: { schema: 'public' },
+  global: { headers: { 'Accept-Profile': 'public' } }
+});
   async function fetchAllRows() {
     let all = [], from = 0, batchSize = 20000, more = true;
     while (more) {
