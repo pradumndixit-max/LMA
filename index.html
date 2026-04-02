@@ -631,20 +631,57 @@ function rRid(){
 
 /* PAYOUTS */
 function rPay(){
-  const lmp=S(DATA,'LM_Payout'),club=S(DATA,'Club_Payout'),sddp=S(DATA,'SDD_Payout'),fm=S(DATA,'FM_Payout'),tp=S(DATA,'Total_Payout'),lm=S(DATA,'lm_orders');
-  const el=document.getElementById('pg-payouts');
-  el.innerHTML='<div id="k-pay"></div><div class="cr c2"><div class="cc"><div class="ct">Payout by State (â¹)</div><div class="cw" id="hw-pst"><canvas id="c-pst"></canvas></div></div><div class="cc"><div class="ct">â¹/LM Order by Hub (Top 12)</div><div class="cw" id="hw-ppo"><canvas id="c-ppo"></canvas></div></div></div><div class="cr c1"><div class="cc"><div class="ct">Top 12 Club Payout Riders</div><div class="cw" style="height:190px"><canvas id="c-clr"></canvas></div></div></div><div class="sti">Payout Detail Table</div><div class="cc"><div class="tw"><table><thead><tr><th>#</th><th>Rider</th><th>Hub</th><th>State</th><th>LM Pay</th><th>Club Pay</th><th>SDD Pay</th><th>FM Pay</th><th>Slab</th><th>RTS</th><th>Total Pay</th></tr></thead><tbody id="ptb"></tbody></table></div></div>';
-  mkK('k-pay',[{l:'Total Payout',v:FC(tp),c:'bl'},{l:'LM Payout',v:FC(lmp),c:'gn'},{l:'Club Payout',v:FC(club),c:'tl'},{l:'SDD Payout',v:FC(sddp),c:'pu'},{l:'FM Payout',v:FC(fm),c:'am'},{l:'â¹/LM Order',v:FC(lm>0?R2(tp/lm):0),s:'avg CPO',c:'bl'}]);
-  const bSt={};DATA.forEach(r=>{if(!bSt[r.state])bSt[r.state]=0;bSt[r.state]+=r.Total_Payout;});
-  const ste=Object.entries(bSt).sort((a,b)=>b[1]-a[1]);document.getElementById('hw-pst').style.height=hH(ste.length);
-  ch('c-pst',{type:'bar',data:{labels:ste.map(([s])=>s),datasets:[{data:ste.map(([,v])=>+v.toFixed(0)),backgroundColor:'#0d9488',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' â¹'+F(c.raw)}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'â¹'+F(v),font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
-  const bH2={};DATA.forEach(r=>{if(!bH2[r.hub])bH2[r.hub]={tp:0,lm:0};bH2[r.hub].tp+=r.Total_Payout;bH2[r.hub].lm+=r.lm_orders;});
-  const ppo=Object.entries(bH2).filter(([,v])=>v.lm>0).map(([h,v])=>({h,p:R2(v.tp/v.lm)})).sort((a,b)=>b.p-a.p).slice(0,12);
-  document.getElementById('hw-ppo').style.height=hH(ppo.length);
-  ch('c-ppo',{type:'bar',data:{labels:ppo.map(p=>p.h),datasets:[{data:ppo.map(p=>p.p),backgroundColor:'#7c3aed',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' â¹'+c.raw+'/order'}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'â¹'+v,font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
-  const topC=[...DATA].filter(r=>r.Club_Payout>0).sort((a,b)=>b.Club_Payout-a.Club_Payout).slice(0,12);
-  ch('c-clr',{type:'bar',data:{labels:topC.map(r=>r.rider_name.length>16?r.rider_name.slice(0,14)+'â¦':r.rider_name),datasets:[{data:topC.map(r=>r.Club_Payout),backgroundColor:'#16a34a',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' â¹'+c.raw}}},scales:{y:{grid:{color:GC},ticks:{callback:v=>'â¹'+v,font:{size:9}}},x:{grid:{display:false},ticks:{font:{size:9},maxRotation:35}}}}});
-  document.getElementById('ptb').innerHTML=DATA.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+r.rider_name+'</td><td>'+r.hub+'</td><td>'+r.state+'</td><td class="num">'+FC(r.LM_Payout)+'</td><td class="num">'+FC(r.Club_Payout)+'</td><td class="num">'+FC(r.SDD_Payout)+'</td><td class="num">'+FC(r.FM_Payout)+'</td><td class="num">'+FC(r.Slab_Incentive)+'</td><td class="num">'+FC(r.RTS_payout)+'</td><td class="num">'+FC(r.Total_Payout)+'</td></tr>').join('');
+  const el = document.getElementById('pg-payouts');
+  const lm_pay  = S(DATA,'LM_Payout_without_SR') || S(DATA,'LM_Payout without SR') || 0;
+  const fm_pay  = S(DATA,'FM_Payout') || 0;
+  const rts_pay = S(DATA,'RTS_payout') || 0;
+
+  el.innerHTML =
+    '<div id="k-pay"></div>'+
+    '<div class="cr c2">'+
+      '<div class="cc"><div class="ct">Payout by State (₹)</div><div class="cw" id="hw-pst"><canvas id="c-pst"></canvas></div></div>'+
+      '<div class="cc"><div class="ct">₹/LM Order by Hub (Top 12)</div><div class="cw" id="hw-ppo"><canvas id="c-ppo"></canvas></div></div>'+
+    '</div>'+
+    '<div class="cr c1"><div class="cc"><div class="ct">Top 12 Club Payout Riders</div><div class="cw" style="height:190px"><canvas id="c-clr"></canvas></div></div></div>'+
+    '<div class="sti">Payout Detail Table</div>'+
+    '<div class="cc"><div class="tw"><table><thead><tr>'+
+    '<th>#</th><th>Rider</th><th>Hub</th><th>State</th>'+
+    '<th>LM Pay (w/o SR)</th><th>FM Pay</th><th>RTS Pay</th>'+
+    '<th>Club Pay</th><th>SDD Pay</th><th>Incentive</th><th>Total Pay</th>'+
+    '</tr></thead><tbody id="ptb"></tbody></table></div></div>';
+
+  mkK('k-pay',[
+    {l:'LM Payout (w/o SR)',v:FC(lm_pay), s:'base last mile pay',c:'bl'},
+    {l:'FM Payout',         v:FC(fm_pay), s:'first mile',        c:'gn'},
+    {l:'RTS Payout',        v:FC(rts_pay),s:'return to shipper', c:'rd'},
+  ]);
+
+  const bS={};
+  DATA.forEach(r=>{const st=r.state;if(!bS[st])bS[st]={pay:0};bS[st].pay+=(+r.Total_Payout||0);});
+  const stArr=Object.entries(bS).sort((a,b)=>b[1].pay-a[1].pay);
+  document.getElementById('hw-pst').style.height=hH(stArr.length);
+  ch('c-pst',{type:'bar',data:{labels:stArr.map(([s])=>s),datasets:[{data:stArr.map(([,v])=>v.pay),backgroundColor:'#00756A',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+FC(c.raw)}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+F(v),font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
+
+  const bH={};
+  DATA.forEach(r=>{const h=r.hub;if(!bH[h])bH[h]={pay:0,lm:0};bH[h].pay+=(+r.Total_Payout||0);bH[h].lm+=(+r.lm_orders||0);});
+  const hCPO=Object.entries(bH).filter(([,v])=>v.lm>0).map(([h,v])=>({h,cpo:R2(v.pay/v.lm)})).sort((a,b)=>b.cpo-a.cpo).slice(0,12);
+  document.getElementById('hw-ppo').style.height=hH(hCPO.length);
+  ch('c-ppo',{type:'bar',data:{labels:hCPO.map(h=>h.h),datasets:[{data:hCPO.map(h=>h.cpo),backgroundColor:'#C8D400',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' ₹'+c.raw+'/order'}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+v,font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
+
+  const clArr=[...DATA].filter(r=>(+r.Club_Payout||0)>0).sort((a,b)=>(+b.Club_Payout||0)-(+a.Club_Payout||0)).slice(0,12);
+  ch('c-clr',{type:'bar',data:{labels:clArr.map(r=>r.rider_name),datasets:[{data:clArr.map(r=>+r.Club_Payout||0),backgroundColor:'#7c3aed',borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+FC(c.raw)}}},scales:{x:{grid:{color:GC},ticks:{callback:v=>'₹'+F(v),font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
+
+  document.getElementById('ptb').innerHTML=DATA.map((r,i)=>{
+    const lmpay=+r.LM_Payout_without_SR||+r['LM_Payout without SR']||0;
+    const fmpay=+r.FM_Payout||0; const rtspay=+r.RTS_payout||0;
+    const clubp=+r.Club_Payout||0; const sddp=+r.SDD_Payout||0;
+    const inc=(+r.Slab_Incentive||+r.Slab_incentive||0)+(+r.Large_amount||0);
+    const total=+r.Total_Payout||0;
+    return '<tr><td>'+(i+1)+'</td><td>'+r.rider_name+'</td><td>'+r.hub+'</td><td>'+r.state+'</td>'+
+      '<td class="num">'+FC(lmpay)+'</td><td class="num">'+FC(fmpay)+'</td><td class="num">'+FC(rtspay)+'</td>'+
+      '<td class="num">'+FC(clubp)+'</td><td class="num">'+FC(sddp)+'</td><td class="num">'+FC(inc)+'</td>'+
+      '<td class="num"><strong>'+FC(total)+'</strong></td></tr>';
+  }).join('');
 }
 
 /* CPO ANALYTICS */
