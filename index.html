@@ -571,188 +571,49 @@ function rOv(){
 
 /* ORDERS */
 function rOrd(){
-  const el = document.getElementById('pg-orders');
-
-  // Show loading state immediately
-  el.innerHTML =
-    '<div id="k-ord"></div>'+
-    '<div style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:16px">'+
-      '<div style="width:44px;height:44px;border:4px solid #e2ddd6;border-top-color:#00756A;border-radius:50%;animation:spin 1s linear infinite"></div>'+
-      '<div style="font-size:13px;color:#7da8a3;font-weight:500">Loading orders from Google Sheet...</div>'+
-    '</div>';
-
-  // Add spinner CSS if not already there
-  if(!document.getElementById('spin-css')){
-    const s=document.createElement('style');
-    s.id='spin-css';
-    s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
-    document.head.appendChild(s);
-  }
-
-  // Build API URL with current date filter
-  const df = document.getElementById('df').value;
-  const dt = document.getElementById('dt').value;
-  let apiUrl = 'https://script.google.com/macros/s/AKfycbzfltJn_GOrsZSVBstw4CXM0OXJVY6s-IcLPTFlKh8J24z76pCICvnpxTAnXQnB2rrV/exec';
-  if(df) apiUrl += (apiUrl.includes('?')?'&':'?') + 'dateFrom=' + df;
-  if(dt) apiUrl += (apiUrl.includes('?')?'&':'?') + 'dateTo=' + dt;
-
-  fetch(apiUrl)
-    .then(r => {
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(data => {
-      if(data.error) throw new Error(data.error);
-      renderOrders(el, data);
-    })
-    .catch(err => {
-      el.innerHTML =
-        '<div class="callout warn">'+
-          '<div>⚠️ Failed to load orders data: <strong>'+err.message+'</strong><br>'+
-          '<small style="opacity:.8">Check that the Apps Script is deployed with <em>Anyone</em> access.</small></div>'+
-        '</div>';
-      console.error('Orders API error:', err);
-    });
+  const el=document.getElementById('pg-orders');
+  el.innerHTML='<div id="k-ord"></div><div style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:16px"><div style="width:44px;height:44px;border:4px solid #d4e4e2;border-top-color:#00756A;border-radius:50%;animation:spin 1s linear infinite"></div><div style="font-size:13px;color:#7da8a3;font-weight:500">Loading orders from Google Sheet…</div></div>';
+  if(!document.getElementById('spin-css')){const s=document.createElement('style');s.id='spin-css';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s);}
+  const df=document.getElementById('df')?.value||'';
+  const dt=document.getElementById('dt')?.value||'';
+  let url='https://script.google.com/macros/s/AKfycbzfltJn_GOrsZSVBstw4CXM0OXJVY6s-IcLPTFlKh8J24z76pCICvnpxTAnXQnB2rrV/exec';
+  if(df) url+='?dateFrom='+df;
+  if(dt) url+=(url.includes('?')?'&':'?')+'dateTo='+dt;
+  fetch(url)
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(data=>{if(data.error)throw new Error(data.error);renderOrders(el,data);})
+    .catch(err=>{el.innerHTML='<div class="callout" style="border-color:var(--rd);background:var(--rdl);margin:24px"><div>⚠️ <strong>Could not load orders:</strong> '+err.message+'</div></div>';});
 }
-
-function renderOrders(el, data) {
-  const dates  = data.dates  || [];
-  const totals = data.totals || {};
-  const GC     = 'rgba(0,0,0,.05)';
-
-  const dateLabels = dates.map(d=>d.date);
-  const lmArr      = dates.map(d=>d.lm);
-  const fmArr      = dates.map(d=>d.fm);
-  const rtsArr     = dates.map(d=>d.rts);
-
-  el.innerHTML =
-    '<div id="k-ord"></div>'+
-
-    // Combined bar chart
-    '<div class="cr c1">'+
-      '<div class="cc">'+
-        '<div class="ct">Date-wise Order Volume <span class="ct-sub">LM · FM · RTS</span></div>'+
-        '<div class="cw" style="height:300px"><canvas id="c-date-orders"></canvas></div>'+
-      '</div>'+
-    '</div>'+
-
-    // 3 individual line charts
+function renderOrders(el,data){
+  const dates=data.dates||[];const totals=data.totals||{};const GC='rgba(0,0,0,.05)';
+  const labels=dates.map(d=>d.date);const lmArr=dates.map(d=>d.lm);const fmArr=dates.map(d=>d.fm);const rtsArr=dates.map(d=>d.rts);
+  const gt=(totals.lm||0)+(totals.fm||0)+(totals.rts||0);
+  el.innerHTML='<div id="k-ord"></div>'+
+    '<div class="cr c1"><div class="cc"><div class="ct">Date-wise Order Volume <span class="ct-sub">LM · FM · RTS</span></div><div class="cw" style="height:300px"><canvas id="c-date-orders"></canvas></div></div></div>'+
     '<div class="cr c3">'+
-      '<div class="cc"><div class="ct" style="color:#00756A">LM Orders by Date</div><div class="cw" style="height:180px"><canvas id="c-lm-line"></canvas></div></div>'+
-      '<div class="cc"><div class="ct" style="color:#C8D400">FM Orders by Date</div><div class="cw" style="height:180px"><canvas id="c-fm-line"></canvas></div></div>'+
-      '<div class="cc"><div class="ct" style="color:#dc2626">RTS Orders by Date</div><div class="cw" style="height:180px"><canvas id="c-rts-line"></canvas></div></div>'+
+      '<div class="cc"><div class="ct" style="color:#00756A">LM Orders</div><div class="cw" style="height:180px"><canvas id="c-lm-line"></canvas></div></div>'+
+      '<div class="cc"><div class="ct" style="color:#C8D400">FM Orders</div><div class="cw" style="height:180px"><canvas id="c-fm-line"></canvas></div></div>'+
+      '<div class="cc"><div class="ct" style="color:#dc2626">RTS Orders</div><div class="cw" style="height:180px"><canvas id="c-rts-line"></canvas></div></div>'+
     '</div>'+
-
-    // Summary table
     '<div class="sti">Date-wise Summary</div>'+
-    '<div class="cc"><div class="tw">'+
-      '<table>'+
-        '<thead><tr>'+
-          '<th>Date</th>'+
-          '<th>LM Orders</th><th>FM Orders</th><th>RTS Orders</th>'+
-          '<th>Total</th><th>LM %</th><th>FM %</th><th>RTS %</th>'+
-        '</tr></thead>'+
-        '<tbody id="date-tb"></tbody>'+
-        '<tfoot><tr style="font-weight:700;background:var(--sf2)">'+
-          '<td>TOTAL</td>'+
-          '<td class="num">'+F(totals.lm||0)+'</td>'+
-          '<td class="num">'+F(totals.fm||0)+'</td>'+
-          '<td class="num">'+F(totals.rts||0)+'</td>'+
-          '<td class="num">'+F((totals.lm||0)+(totals.fm||0)+(totals.rts||0))+'</td>'+
-          '<td class="num">'+PC(totals.lm||0,(totals.lm||0)+(totals.fm||0)+(totals.rts||0))+'</td>'+
-          '<td class="num">'+PC(totals.fm||0,(totals.lm||0)+(totals.fm||0)+(totals.rts||0))+'</td>'+
-          '<td class="num">'+PC(totals.rts||0,(totals.lm||0)+(totals.fm||0)+(totals.rts||0))+'</td>'+
-        '</tr></tfoot>'+
-      '</table>'+
-    '</div></div>'+
-
-    // Data freshness
-    '<div style="text-align:right;font-size:10px;color:var(--tx3);margin-top:8px">'+
-      'Source: Mar dump data → Orders&Payouts · '+
-      (totals.rows_loaded||0).toLocaleString()+' rows · '+
-      'Fetched: '+new Date().toLocaleTimeString()+
-    '</div>';
-
-  // KPI cards
+    '<div class="cc"><div class="tw"><table><thead><tr><th>Date</th><th>LM Orders</th><th>FM Orders</th><th>RTS Orders</th><th>Total</th><th>LM%</th><th>FM%</th><th>RTS%</th></tr></thead>'+
+    '<tbody id="date-tb"></tbody>'+
+    '<tfoot><tr style="font-weight:700;background:var(--sf2)"><td>TOTAL</td><td class="num">'+F(totals.lm||0)+'</td><td class="num">'+F(totals.fm||0)+'</td><td class="num">'+F(totals.rts||0)+'</td><td class="num">'+F(gt)+'</td><td class="num">'+PC(totals.lm||0,gt)+'</td><td class="num">'+PC(totals.fm||0,gt)+'</td><td class="num">'+PC(totals.rts||0,gt)+'</td></tr></tfoot>'+
+    '</table></div></div>'+
+    '<div style="text-align:right;font-size:10px;color:var(--tx3);padding:8px 24px">Source: Mar dump → Orders&Payouts · '+(totals.rows_loaded||0).toLocaleString()+' rows · Fetched: '+new Date().toLocaleTimeString()+'</div>';
   mkK('k-ord',[
-    {l:'Total LM Orders', v:F(totals.lm||0),  s:'last mile',        c:'bl'},
-    {l:'Total FM Orders', v:F(totals.fm||0),  s:'first mile',       c:'gn'},
-    {l:'Total RTS Orders',v:F(totals.rts||0), s:'return to shipper',c:'rd'},
-    {l:'Date Range',      v:(totals.rows_loaded||0).toLocaleString()+' rows',
-                          s:(dates[0]?.date||'')+' → '+(dates[dates.length-1]?.date||''),c:'tl'},
+    {l:'Total LM Orders',v:F(totals.lm||0),s:'last mile',c:'bl'},
+    {l:'Total FM Orders',v:F(totals.fm||0),s:'first mile',c:'gn'},
+    {l:'Total RTS Orders',v:F(totals.rts||0),s:'return to shipper',c:'rd'},
+    {l:'Date Range',v:(totals.rows_loaded||0).toLocaleString()+' rows',s:(dates[0]?.date||'')+' → '+(dates[dates.length-1]?.date||''),c:'tl'},
   ]);
-
-  // Combined grouped bar chart
-  ch('c-date-orders',{
-    type:'bar',
-    data:{
-      labels: dateLabels,
-      datasets:[
-        {label:'LM Orders', data:lmArr,  backgroundColor:'#00756A', borderRadius:3},
-        {label:'FM Orders', data:fmArr,  backgroundColor:'#C8D400', borderRadius:3},
-        {label:'RTS Orders',data:rtsArr, backgroundColor:'#dc2626', borderRadius:3},
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}},
-      scales:{
-        x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}},
-        y:{grid:{color:GC},ticks:{font:{size:9}}}
-      }
-    }
-  });
-
-  // Line chart helper
-  function lineChart(id, label, data, color){
-    ch(id,{
-      type:'line',
-      data:{labels:dateLabels,datasets:[{
-        label, data, borderColor:color,
-        backgroundColor:color+'22', fill:true,
-        tension:.4, pointRadius:3, borderWidth:2
-      }]},
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}},
-          y:{grid:{color:GC},ticks:{font:{size:9}}}
-        }
-      }
-    });
-  }
-  lineChart('c-lm-line',  'LM Orders',  lmArr,  '#00756A');
-  lineChart('c-fm-line',  'FM Orders',  fmArr,  '#C8D400');
-  lineChart('c-rts-line', 'RTS Orders', rtsArr, '#dc2626');
-
-  // Table rows
-  const allTotal = (totals.lm||0)+(totals.fm||0)+(totals.rts||0);
-  document.getElementById('date-tb').innerHTML = dates.map(d=>{
-    const tot = d.lm+d.fm+d.rts;
-    return '<tr>'+
-      '<td><strong>'+d.date+'</strong></td>'+
-      '<td class="num">'+F(d.lm)+'</td>'+
-      '<td class="num">'+F(d.fm)+'</td>'+
-      '<td class="num">'+F(d.rts)+'</td>'+
-      '<td class="num"><strong>'+F(tot)+'</strong></td>'+
-      '<td class="num">'+PC(d.lm,tot)+'</td>'+
-      '<td class="num">'+PC(d.fm,tot)+'</td>'+
-      '<td class="num">'+PC(d.rts,tot)+'</td>'+
-    '</tr>';
-  }).join('');
-
-  // Update subtitle
-  document.getElementById('psub').textContent =
-    (totals.rows_loaded||0).toLocaleString()+' rows · '+
-    (dates[0]?.date||'')+' → '+(dates[dates.length-1]?.date||'')+
-    ' · Live from Google Sheet';
-
-  // Update badge
-  document.getElementById('sbadge').textContent = '● Live';
-  document.getElementById('sbadge').className = 'ss live';
+  ch('c-date-orders',{type:'bar',data:{labels,datasets:[{label:'LM Orders',data:lmArr,backgroundColor:'#00756A',borderRadius:3},{label:'FM Orders',data:fmArr,backgroundColor:'#C8D400',borderRadius:3},{label:'RTS Orders',data:rtsArr,backgroundColor:'#dc2626',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}},y:{grid:{color:GC},ticks:{font:{size:9}}}}}});
+  function lc(id,label,arr,color){ch(id,{type:'line',data:{labels,datasets:[{label,data:arr,borderColor:color,backgroundColor:color+'22',fill:true,tension:.4,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}},y:{grid:{color:GC},ticks:{font:{size:9}}}}}});}
+  lc('c-lm-line','LM',lmArr,'#00756A');lc('c-fm-line','FM',fmArr,'#C8D400');lc('c-rts-line','RTS',rtsArr,'#dc2626');
+  document.getElementById('date-tb').innerHTML=dates.map(d=>{const t=d.lm+d.fm+d.rts;return '<tr><td><strong>'+d.date+'</strong></td><td class="num">'+F(d.lm)+'</td><td class="num">'+F(d.fm)+'</td><td class="num">'+F(d.rts)+'</td><td class="num"><strong>'+F(t)+'</strong></td><td class="num">'+PC(d.lm,t)+'</td><td class="num">'+PC(d.fm,t)+'</td><td class="num">'+PC(d.rts,t)+'</td></tr>';}).join('');
+  document.getElementById('psub').textContent=(totals.rows_loaded||0).toLocaleString()+' rows · '+(dates[0]?.date||'')+' → '+(dates[dates.length-1]?.date||'')+' · Live from Google Sheet';
+  const b=document.getElementById('sbadge');if(b){b.textContent='● Live';b.className='ss live';}
 }
-
 /* RIDERS */
 function rRid(){
   const bR={};DATA.forEach(r=>{if(!bR[r.rider_id])bR[r.rider_id]={n:r.rider_name,h:r.hub,st:r.state,lm:0,f:0,rv:0,tp:0,lmp:0,club:0,sdd:0,dsr:r.DSR,as:0};bR[r.rider_id].lm+=r.lm_orders;bR[r.rider_id].f+=r.fwd_orders;bR[r.rider_id].rv+=r.rev_orders;bR[r.rider_id].tp+=r.Total_Payout;bR[r.rider_id].lmp+=r.LM_Payout;bR[r.rider_id].club+=r.Club_Payout;bR[r.rider_id].sdd+=r.SDD_Payout;bR[r.rider_id].as+=r.Total_assigned;});
@@ -1219,39 +1080,5 @@ rOv();
 
 </script>
 </body>
-<!-- SUPABASE AUTO-LOADER -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-(async function() {
-  const SUPA_URL = "https://rvhmldxqulnecavnyfgm.supabase.co";
-  const SUPA_KEY = "sb_publishable_srCMZUmW80l7bZjpsalGVA_dUWLtXpR";
-  const client = supabase.createClient(SUPA_URL, SUPA_KEY, { db: { schema: 'public' }, global: { headers: { 'Accept-Profile': 'public' } } });
-  function mapRow(r) { return { parent_id:r.parent_id, pincode:r.pincode, pincode_category:r.pincode_category, rider_id:r.rider_id, rider_name:r.rider_name, hub:r.hub, state:r.state, city:r.city, order_date:r.order_date, fm_orders:r.fm_orders, lm_orders:r.lm_orders, fwd_orders:r.fwd_orders, rev_orders:r.rev_orders, rts_orders:r.rts_orders, sdd_orders:r.sdd_orders, qc_failed:r.qc_failed, clubbed_orders:r.clubbed_orders, Total_orders:r.total_orders, Total_assigned:r.total_assigned, LM_Payout_without_SR:r.lm_payout_without_sr, FM_Payout:r.fm_payout, Slab_Incentive:r.slab_incentive, RTS_payout:r.rts_payout, DSR:r.dsr, Club_Payout:r.club_payout, SDD_Payout:r.sdd_payout, LM_Payout:r.lm_payout, Total_Payout:r.week_total_payout, Large_shipment:r.large_shipment, Large_amount:r.large_amount, pod:r.pod, Temp:r.temp }; }
-  async function fetchAllRows() {
-    const BATCH=1000,PARALLEL=10; let all=[],offset=0,more=true;
-    while(more) {
-      const promises=Array.from({length:PARALLEL},(_,i)=>client.from('lma_data').select('*').order('id',{ascending:true}).range(offset+i*BATCH,offset+(i+1)*BATCH-1));
-      const results=await Promise.all(promises);
-      let anyFull=false;
-      results.forEach(({data})=>{ if(data&&data.length>0){ all=all.concat(data.map(mapRow)); if(data.length===BATCH)anyFull=true; } });
-      console.log('Loaded '+all.length+' rows...'); more=anyFull; offset+=PARALLEL*BATCH;
-    }
-    return all;
-  }
-  window.addEventListener('load', async()=>{
-    try {
-      const rows=await fetchAllRows();
-      console.log('✅ '+rows.length+' rows loaded!');
-      if(typeof parseRows==='function') parseRows(rows);
-      if(typeof applyData==='function') applyData(rows,rows);
-    } catch(err){ console.error('Supabase error:',err); }
-  });
-  document.addEventListener('DOMContentLoaded',()=>{
-    document.querySelectorAll("div[onclick*='overview']").forEach(el=>el.remove());
-    const ov=document.getElementById('pg-overview'); if(ov) ov.style.display='none';
-    setTimeout(()=>{ if(typeof nav==='function') nav('orders',null); },300);
-  });
-})();
-</script>
-<!-- END SUPABASE AUTO-LOADER -->
+
 </html>
