@@ -604,9 +604,7 @@ function renderOrders(el,data){
   mkK('k-ord',[
     {l:'Total LM Orders',v:F(totals.lm||0),s:'last mile',c:'bl'},
     {l:'Total FM Orders',v:F(totals.fm||0),s:'first mile',c:'gn'},
-    {l:'Total RTS Orders',v:F(totals.rts||0),s:'return to shipper',c:'rd'},
-    {l:'Date Range',v:(totals.rows_loaded||0).toLocaleString()+' rows',s:(dates[0]?.date||'')+' → '+(dates[dates.length-1]?.date||''),c:'tl'},
-  ]);
+    {l:'Total RTS Orders',v:F(totals.rts||0),s:'return to shipper',c:'rd'},  ]);
   ch('c-date-orders',{type:'bar',data:{labels,datasets:[{label:'LM Orders',data:lmArr,backgroundColor:'#00756A',borderRadius:3},{label:'FM Orders',data:fmArr,backgroundColor:'#C8D400',borderRadius:3},{label:'RTS Orders',data:rtsArr,backgroundColor:'#dc2626',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}},y:{grid:{color:GC},ticks:{font:{size:9}}}}}});
   function lc(id,label,arr,color){ch(id,{type:'line',data:{labels,datasets:[{label,data:arr,borderColor:color,backgroundColor:color+'22',fill:true,tension:.4,pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}},y:{grid:{color:GC},ticks:{font:{size:9}}}}}});}
   lc('c-lm-line','LM',lmArr,'#00756A');lc('c-fm-line','FM',fmArr,'#C8D400');lc('c-rts-line','RTS',rtsArr,'#dc2626');
