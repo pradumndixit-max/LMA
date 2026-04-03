@@ -632,25 +632,52 @@ function rPay(){
   const el = document.getElementById('pg-payouts');
   const GC = 'rgba(0,0,0,.05)';
 
-  // Aggregate by date
-  const byDate = {};
-  DATA.forEach(r => {
-    const d = r.order_date;
-    if(!byDate[d]) byDate[d] = { date:d, lm:0, fm:0, rts:0 };
-    byDate[d].lm  += +r.LM_Payout_without_SR || +r['LM_Payout without SR'] || 0;
-    byDate[d].fm  += +r.FM_Payout  || 0;
-    byDate[d].rts += +r.RTS_payout || 0;
-  });
+  // Show spinner — same as Orders page
+  el.innerHTML =
+    '<div id="k-pay"></div>'+
+    '<div style="display:flex;align-items:center;justify-content:center;'+
+    'height:300px;flex-direction:column;gap:16px">'+
+      '<div style="width:44px;height:44px;border:4px solid #d4e4e2;'+
+      'border-top-color:#00756A;border-radius:50%;animation:spin 1s linear infinite"></div>'+
+      '<div style="font-size:13px;color:#7da8a3;font-weight:500">'+
+      'Loading payouts from Google Sheet…</div>'+
+    '</div>';
 
-  const dates  = Object.values(byDate).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!document.getElementById('spin-css')){
+    const s=document.createElement('style');
+    s.id='spin-css';
+    s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+  }
+
+  const df = document.getElementById('df')?.value||'';
+  const dt = document.getElementById('dt')?.value||'';
+  let url = 'https://script.google.com/macros/s/AKfycbzfltJn_GOrsZSVBstw4CXM0OXJVY6s-IcLPTFlKh8J24z76pCICvnpxTAnXQnB2rrV/exec?page=payouts';
+  if(df) url += '&dateFrom=' + df;
+  if(dt) url += '&dateTo='   + dt;
+
+  fetch(url)
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(data=>{ if(data.error) throw new Error(data.error); renderPayouts(el,data); })
+    .catch(err=>{
+      el.innerHTML =
+        '<div class="callout" style="border-color:var(--rd);background:var(--rdl);margin:24px">'+
+          '<div>⚠️ <strong>Could not load payouts:</strong> '+err.message+'</div>'+
+        '</div>';
+    });
+}
+
+function renderPayouts(el, data){
+  const dates  = data.dates  || [];
+  const totals = data.totals || {};
+  const GC     = 'rgba(0,0,0,.05)';
   const labels = dates.map(d=>d.date);
   const lmArr  = dates.map(d=>d.lm);
   const fmArr  = dates.map(d=>d.fm);
   const rtsArr = dates.map(d=>d.rts);
-
-  const totalLM  = lmArr.reduce((s,v)=>s+v,0);
-  const totalFM  = fmArr.reduce((s,v)=>s+v,0);
-  const totalRTS = rtsArr.reduce((s,v)=>s+v,0);
+  const totalLM  = totals.lm_pay_no_sr || 0;
+  const totalFM  = totals.fm_pay       || 0;
+  const totalRTS = totals.rts_pay      || 0;
   const grandTotal = totalLM + totalFM + totalRTS;
 
   el.innerHTML =
@@ -662,9 +689,12 @@ function rPay(){
     '</div></div>'+
 
     '<div class="cr c3">'+
-      '<div class="cc"><div class="ct" style="color:#00756A">LM Payout by Date</div><div class="cw" style="height:180px"><canvas id="c-lm-pay"></canvas></div></div>'+
-      '<div class="cc"><div class="ct" style="color:#C8D400">FM Payout by Date</div><div class="cw" style="height:180px"><canvas id="c-fm-pay"></canvas></div></div>'+
-      '<div class="cc"><div class="ct" style="color:#dc2626">RTS Payout by Date</div><div class="cw" style="height:180px"><canvas id="c-rts-pay"></canvas></div></div>'+
+      '<div class="cc"><div class="ct" style="color:#00756A">LM Payout by Date</div>'+
+        '<div class="cw" style="height:180px"><canvas id="c-lm-pay"></canvas></div></div>'+
+      '<div class="cc"><div class="ct" style="color:#C8D400">FM Payout by Date</div>'+
+        '<div class="cw" style="height:180px"><canvas id="c-fm-pay"></canvas></div></div>'+
+      '<div class="cc"><div class="ct" style="color:#dc2626">RTS Payout by Date</div>'+
+        '<div class="cw" style="height:180px"><canvas id="c-rts-pay"></canvas></div></div>'+
     '</div>'+
 
     '<div class="sti">Date-wise Payout Summary</div>'+
@@ -685,7 +715,13 @@ function rPay(){
         '<td class="num">'+PC(totalFM,grandTotal)+'</td>'+
         '<td class="num">'+PC(totalRTS,grandTotal)+'</td>'+
       '</tr></tfoot>'+
-    '</table></div></div>';
+    '</table></div></div>'+
+
+    '<div style="text-align:right;font-size:10px;color:var(--tx3);padding:8px 24px">'+
+      'Source: Mar dump → Orders&Payouts · '+
+      (totals.rows_loaded||0).toLocaleString()+' rows · '+
+      'Fetched: '+new Date().toLocaleTimeString()+
+    '</div>';
 
   // KPI cards
   mkK('k-pay',[
@@ -694,7 +730,7 @@ function rPay(){
     {l:'RTS Payout',         v:FC(totalRTS), s:'return to shipper',  c:'rd'},
   ]);
 
-  // Combined grouped bar chart
+  // Combined bar chart
   ch('c-date-pay',{
     type:'bar',
     data:{labels,datasets:[
@@ -725,7 +761,7 @@ function rPay(){
 
   // Table rows
   document.getElementById('pay-tb').innerHTML = dates.map(d=>{
-    const tot = d.lm + d.fm + d.rts;
+    const tot = d.lm+d.fm+d.rts;
     return '<tr>'+
       '<td><strong>'+d.date+'</strong></td>'+
       '<td class="num">'+FC(d.lm)+'</td>'+
@@ -737,6 +773,14 @@ function rPay(){
       '<td class="num">'+PC(d.rts,tot)+'</td>'+
     '</tr>';
   }).join('');
+
+  // Update subtitle + badge
+  document.getElementById('psub').textContent =
+    (totals.rows_loaded||0).toLocaleString()+' rows · '+
+    (dates[0]?.date||'')+' → '+(dates[dates.length-1]?.date||'')+
+    ' · Live from Google Sheet';
+  const b=document.getElementById('sbadge');
+  if(b){b.textContent='● Live';b.className='ss live';}
 }
 
 /* CPO ANALYTICS */
